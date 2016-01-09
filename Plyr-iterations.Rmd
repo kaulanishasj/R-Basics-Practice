@@ -1,0 +1,204 @@
+---
+title: "Homework 2"
+author: "Your Name Here"
+date: 'Assigned: September 10, 2015'
+output: html_document
+---
+
+##### This homework is due by **1:30PM on Thursday,  September 17**.  To complete this assignment, follow these steps:
+
+1. Download the `homework2.Rmd` file from Blackboard or the course website.
+
+2. Open `homework2.Rmd` in RStudio.
+
+3. Replace the "Your Name Here" text in the `author:` field with your own name.
+
+4. Supply your solutions to the homework by editing `homework2.Rmd`.
+
+5. When you have completed the homework and have **checked** that your code both runs in the Console and knits correctly when you click `Knit HTML`, rename the R Markdown file to `homework2_YourNameHere.Rmd`, and submit on Blackboard.  (YourNameHere should be changed to your own name.)
+
+##### Homework tips:
+
+1. Recall the following useful RStudio hotkeys.
+
+Keystroke | Description
+----------|-------------
+`<tab>` | Autocompletes commands and filenames, and lists arguments for functions.
+`<up>` | Cycles through previous commands in the console prompt
+`<ctrl-up>` | Lists history of previous commands matching an unfinished one
+`<ctrl-enter>` | Runs current line from source window to Console. Good for trying things out ideas from a source file.
+`<ESC>` | Aborts an unfinished command and get out of the + prompt
+
+**Note**: Shown above are the Windows/Linux keys.  For Mac OS X, the `<ctrl>` key should be substituted with the `<command>` (&#8984;) key.
+
+2. Instead of sending code line-by-line with `<ctrl-enter>`, you can send entire code chunks, and even run all of the code chunks in your .Rmd file. Look under the <Chunks> menu of the Source panel.
+
+3. Run your code in the Console and Knit HTML frequently to check for errors.
+
+4. You may find it easier to solve a problem by interacting only with the Console at first, or by creating a separate `.R` source file that contains only R code and no Markdown.
+
+5. You've now learned about the `with()` function. **Use this function when possible to simplify your syntax**.
+
+### Problem 1: table(), tapply()
+
+The `MASS` package contains a dataset called Insurance.  Read the help file on this data set to understand its contents.
+
+##### (a) table()
+
+Use the `table()` function to produce a contingency table of observation counts across Age and Group.
+
+```{r}
+library(MASS)
+with(Insurance, table(Age, Group))
+```
+
+##### (b) tapply()
+
+Use the `tapply()` function to produce a table showing the **average** number of Holders across Age and Group.
+
+```{r}
+tapply(Insurance[["Holders"]], INDEX= Insurance[c("Age", "Group")], FUN  = mean)
+```
+
+### Problem 2: A more complex `tapply()` example (Claims per Holder)
+
+#####(a) Total number of Holders by Age and Group
+
+Use the `tapply()` function to produce a table showing the total number of Holders across Age and Group.  Save this table in a variable, and also display your answer.
+
+```{r}
+ tot_holders <- tapply(Insurance[["Holders"]], INDEX= Insurance[c("Age", "Group")], FUN = sum)
+
+ tot_holders
+```
+
+#####(b) Total number of Claims by Age and Group
+
+Use the `tapply()` function to produce a table showing the total number of Claims across Age and Group.  Save this table in a variable, and also display your answer.
+
+```{r}
+tot_claims <- tapply(Insurance[["Claims"]], INDEX= Insurance[c("Age", "Group")], FUN = sum)
+
+tot_claims
+ 
+```
+
+#####(c) Rate of Claims per Holder by Age and Group
+
+Use your answers from parts **(a)** and **(b)** to produce a table that shows the rate of Claims per Holder across Age and Group. 
+
+```{r}
+Doubt
+```
+
+Tip: *If an insurance company has 120,000 policy holders and receives 14,000 claims, the rate of claims per holder is 14000/120000 = `r round(14000/120000,3) `*
+
+
+### Problem 3: Someone left strings in your numeric column!
+
+This exercise will give you practice with two of the most common data cleaning tasks.  For this problem we'll use the `survey_untidy.csv` data set posted on the course website.  Begin by importing this data into R.  
+
+In Lecture 4 we look at an example of cleaning up the TVhours column.  The TVhours column of `survey_untidy.csv` has been corrupted in a similar way to what you saw in class.  
+
+Using the techniques you saw in class, make a new version of the untidy survey data where the TVhours column has been cleaned up. (Hint: *you may want to handle the 7th observation separately from the others*)
+
+```{r}
+survey <- read.csv("94842_website/data/survey_untidy.csv")
+
+survey <- transform(survey, TVhours = as.numeric(gsub("[^0-9.]" , "", as.character(survey$TVhours))) )
+```
+
+### Problem 4: Shouldn't ppm, pPM and PPM all be the same thing?
+
+This exercise picks up from Problem 3, and walks you through two different approaches to cleaning up the Program column
+
+##### (a) Identifying the problem.
+
+Use the `table` or `unique` command on the Program column to figure out what went wrong with this column.  Describe the problem in the space below.
+
+```{r}
+unique(survey$Program) 
+table(survey$Program)
+```
+
+
+**Description of the problem:** factors with the same intentional meaning are worded differenly, due to misspelling or mixture of cases. MISM should the same as miSM, but diff because cases are different. 
+
+
+##### (b) `mapvalues` approach
+
+Starting with the cleaned up data you produced in Problem 3, use the `mapvalues` and `transform` functions to fix the Program column by mapping all of the lowercase and mixed case program names to upper case.  
+
+```{r}
+library(plyr)
+
+transform(survey, Program = as.factor(mapvalues(Program, unique(survey$Program), c("MISM", "MISM", "PPM", "PPM", "PPM", "OTHER", "MISM", "OTHER", "MISM", "PPM", "OTHER"))))
+
+```
+
+##### (c) `toupper` approach
+
+The `toupper` function takes an array of character strings and converts all letters to uppercase.
+
+Use `toupper()` and `transform` to perform the same data cleaning task as in part (b).  
+
+```{r}
+survey <- transform(survey, Program = toupper(survey$Program))
+```
+
+**Tip**: *The `toupper()` and `tolower()` functions are very useful in data cleaning tasks.  You may want to start by running these functions even if you'll have to do some more spot-cleaning later on.*
+
+### Problem 5: Let's apply some functions
+
+##### (a) Writing trimmed mean function
+
+Write a function that calculates the mean of a numeric vector `x`, ignoring the `s` smallest and `l` largest values (this is a *trimmed mean*).  
+
+Your function should use the `length()` function to check if `x` has at least `s + l + 1` values.  If `x` is shorter than `s + l + 1`, your function should use the `message()` function to tell the user that the vector can't be trimmed as requested.  If `x` is at least length `s + l + 1`, your function should return the trimmed mean.
+
+```{r}
+trimmedMean <- function(x, s = 0, l = 0) {
+  length.test <- s + l + 1
+  if(length(x) < length.test){
+    message("Vector cannot be trimmed")
+    return
+  } 
+  else {
+    x <- sort(x)[2:(length(x) -1)]
+    return (mean(x))
+  }
+}
+
+```
+
+**Hint:** *For this exercise it will be useful to recall the `sort()` function that you first saw in Lecture 1.*
+
+**Note:** The `s = 0` and `l = 0` specified in the function definition are the default settings.  i.e., this syntax ensures that if `s` and `l` are not provided by the user, they are both set to `0`.  Thus the default behaviour is that the `trimmedMean` function doesn't trim anything, and hence is the same as the `mean` function.  
+
+##### (b) Apply your function with a for loop
+
+```{r}
+set.seed(12345) # Sets seed to make sure everyone's random vectors are generated the same
+list.random <- list(normals = rnorm(20), 
+                    unifs = runif(35),
+                    cauchys = rcauchy(100))
+```
+
+Using a `for loop` and your function from part **(a)**, create a vector whose elements are the trimmed means of the vectors in `list.random`, taking `s = 2` and `l = 4`. 
+
+```{r}
+trim_vect <- c()
+for(i in 1:length(list.random)){
+  trim_vect <- c(trim_vect, (trimmedMean( list.random[[i]],s= 2,l= 4)) )
+}
+```
+
+##### (c) lapply(), sapply()
+
+Repeat part **(b)**, using the `lapply` and `sapply` functions instead of a for loop.  Your `lapply` command should return a list of trimmed means, and your `sapply` command should return a vector of trimmed means.
+
+```{r}
+
+lapply(list.random, mean, trim = 1)
+sapply(list.random, mean, trim = 1)
+```

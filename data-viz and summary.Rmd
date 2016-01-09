@@ -1,0 +1,335 @@
+---
+title: "Homework 3"
+author: "Your Name Here"
+date: 'Assigned: September 17, 2015'
+output: html_document
+---
+
+##### This homework is due by **1:30pm on Thursday, September 24**.  To complete this assignment, follow these steps:
+
+1. Download the `homework3.Rmd` file from Blackboard or the course website.
+
+2. Open `homework3.Rmd` in RStudio.
+
+3. Replace the "Your Name Here" text in the `author:` field with your own name.
+
+4. Supply your solutions to the homework by editing `homework3.Rmd`.
+
+5. When you have completed the homework and have **checked** that your code both runs in the Console and knits correctly when you click `Knit HTML`, rename the R Markdown file to `homework3_YourNameHere.Rmd`, and submit on Blackboard.  (YourNameHere should be changed to your own name.)
+
+##### Homework tips:
+
+1. Recall the following useful RStudio hotkeys.
+
+Keystroke | Description
+----------|-------------
+`<tab>` | Autocompletes commands and filenames, and lists arguments for functions.
+`<up>` | Cycles through previous commands in the console prompt
+`<ctrl-up>` | Lists history of previous commands matching an unfinished one
+`<ctrl-enter>` | Runs current line from source window to Console. Good for trying things out ideas from a source file.
+`<ESC>` | Aborts an unfinished command and get out of the + prompt
+
+**Note**: Shown above are the Windows/Linux keys.  For Mac OS X, the `<ctrl>` key should be substituted with the `<command>` (&#8984;) key.
+
+2. Instead of sending code line-by-line with `<ctrl-enter>`, you can send entire code chunks, and even run all of the code chunks in your .Rmd file. Look under the <Chunks> menu of the Source panel.
+
+3. Run your code in the Console and Knit HTML frequently to check for errors.
+
+4. You may find it easier to solve a problem by interacting only with the Console at first, or by creating a separate `.R` source file that contains only R code and no Markdown.
+
+### Problem 1: tapply() and aggregate() 
+
+This problem uses the birthwt dataset, which we load and manipulate in the code chunk below.
+
+```{r}
+library(MASS)  # Needed for birthwt data
+library(plyr)  # Needed for mapvalues function
+
+# Rename the columns to have more descriptive names
+colnames(birthwt) <- c("birthwt.below.2500", "mother.age", "mother.weight", 
+    "race", "mother.smokes", "previous.prem.labor", "hypertension", "uterine.irr", 
+    "physician.visits", "birthwt.grams")
+
+# Transform variables to factors with descriptive levels
+birthwt <- transform(birthwt, 
+            race = as.factor(mapvalues(race, c(1, 2, 3), 
+                              c("white","black", "other"))),
+            mother.smokes = as.factor(mapvalues(mother.smokes, 
+                              c(0,1), c("no", "yes"))),
+            hypertension = as.factor(mapvalues(hypertension, 
+                              c(0,1), c("no", "yes"))),
+            uterine.irr = as.factor(mapvalues(uterine.irr, 
+                              c(0,1), c("no", "yes")))
+            )
+```
+
+##### (a) tapply()  (two factors)
+
+Use `with()` along with the `tapply()` function to produce a table showing the % of babies born weighing under 2500g, broken down by race and smoking status.
+
+```{r}
+with(birthwt, tapply(birthwt.below.2500, INDEX = list(race, mother.smokes), FUN = function(x){ mean(x)*100 } ))
+```
+
+##### (b) tapply   (three factors)
+
+Use the `tapply()` function to produce a table showing the % of babies born weighing under 2500g, broken down by race, smoking status, and hypertension.
+
+```{r}
+with(birthwt, tapply(birthwt.below.2500, INDEX = list(race, mother.smokes,hypertension), FUN = function(x){ mean(x)*100 } ))
+```
+
+##### (c) aggregate() (three factors)
+
+Repeat part (b) using the `aggregate()` function.
+
+```{r}
+aggregate(birthwt.below.2500 ~ race + mother.smokes + hypertension , FUN = function(x){ mean(x)*100 } , data = birthwt)
+```
+
+##### (d) Nicer table output using `kable()`
+
+Use the `kable()` function from the `knitr` library to display the table from part **(c)** in nice formatting. 
+
+```{r, results = "asis"}
+library(knitr)  # load the package
+abc <- aggregate(birthwt.below.2500 ~ race + mother.smokes + hypertension , FUN = function(x){ mean(x)*100 } , data = birthwt)
+kable(abc)
+# Edit me
+```
+
+**Hint**: You will have to set the `results` argument in the R markdown code chunk, and also specify the appropriate `format` argument in the `kable()` function.  The notes for Lecture 5 have a working example of this.
+
+##### (e)  Hiding code with `echo` 
+
+Repeat part **(d)**, but this time set the `echo` argument of the code chunk in such a way that the code is not printed, but the table is still displayed.
+
+```{r, results = "asis", echo = FALSE}
+kable(abc)
+```
+
+
+### Problem 2: A simple summary function
+
+##### (a)  Checking if a vector is binary.
+
+A binary vector is one whose entries are all either 0 or 1.  E.g., `c(0, 0, 1, 1, 0)` is a binary vector, but `c(1, 2, 1.2, 0, 1, 1)` is not.
+
+Write a function called `isBinary` that accepts a single argument called `x`.  Your function should return `TRUE` if `x` is binary and `FALSE` otherwise.
+
+```{r}
+checkBin <- function(x){
+  
+  if(class(x) != "numeric") {
+    message("Cannot process further, Not Numeric Vector")
+    }
+  else {
+    if(length(which(x == 1 )) == sum(x)){
+      return (TRUE)
+    }
+    else {
+      return (FALSE)
+    } 
+      
+  }
+}
+```
+
+You should test your function on at least the example vectors to check that it works as expected.
+
+##### (b) What about missing values?
+
+We might also want to treat vectors like `c(0, NA, 1, NA, 0, 1, NA, 1, 1)` as binary.  i.e., we can redefine a binary vector as one whose values are all either 0, 1, or are missing (`NA`).  
+
+Rewrite your `isBinary` function to now have arguments `(x, allow.NA = FALSE)` that has the following behaviour:
+
+1. If `allow.NA` is `TRUE`, your function should return `TRUE` if the elements of `x` are 0, 1 or `NA`.  It should return `FALSE` otherwise.
+
+2. If `allow.NA` is `FALSE` your function should behave exactly as in (a).  i.e., the function should return `TRUE` if and only if the elements of `x` are 0 or 1.  
+
+```{r}
+checkBin <- function(x, allow.NA = FALSE){
+ 
+  if(class(x) != "numeric") {
+    message("Cannot process further, Not Numeric Vector")
+    return (FALSE)
+    }
+  else {
+    if(allow.NA){
+      x <- x[which(!is.na(x))]
+      return (if(length(which(x == 1 )) == sum(x)) TRUE else FALSE) 
+    }
+    else {
+      is_bin <- c()
+      for(i in length(x)){
+        if(i == 1 | i == 0) (is_bin <- TRUE) else (is_bin <- FALSE)
+      } 
+      return (all(is_bin == TRUE))
+    }
+  }
+}
+```
+
+##### (c) A simple summary function.
+
+Write a function called `calculateBinarySummary` that has a single argument, `x`.  Your function should use your solution to part **(b)** and should have the following behaviour.
+
+1.  If `x` is binary (allowing for `NA`s), your function should return the proportion of values in `x` that are equal to 1, out of the total number of values that are 0 or 1.  (`NA`s should not count toward the denominator in calculating your proportion.)
+
+2. If `x` is not binary, your function should print a message telling the user that this function only summarizes binary variables.
+
+```{r}
+calculateBinarySummary <- function(x){
+  if(checkBin(x, allow.NA = TRUE) == TRUE){
+     x <- x[which(!is.na(x))]
+     return(mean(x))
+  }
+  else {
+    message("function only summarizes binary variables")
+    return (NULL)
+  }
+}
+```
+
+##### (d)  Testing your function.
+
+The variable `test.cases` defined below contains several different choices of input variable `x`.  The variable `output.desired` contains the expected answers.  Write code that runs your `calculateBinarySummary` function from part **(c)** on all of the test cases and checks your output against the desired output.
+
+```{r}
+test.cases <- list(x1 = c(1, 1, 0, 1),
+                   x2 = c(NA, 1, 0, 0, 1),
+                   x3 = c(0, 0, 0, 0, 0, NA),
+                   x4 = c(NA, NA, NA, NA, 1),
+                   x5 = c(1, 1.2, 4, 14),
+                   x6 = c(NA, "hello", NA, 1, 0)
+    )
+
+output.desired <- list(x1 = 0.75, x2 = 0.5, x3 = 0, x4 = 1, 
+                       x5 = NULL, x6 = NULL)
+```
+
+```{r}
+a<- sapply(test.cases, FUN = function(x) { calculateBinarySummary(x) })
+
+identical(a, output.desired)
+
+```
+
+
+**Hint**: To check whether a variable `x` is `NULL`, you'll want to use the `is.null(x)` command instead of the binary operator `==`.  You may also try using the `identical` function.  
+
+### Problem 3: A few simple plots
+
+For this problem we'll use the `diamonds` dataset from the `ggplot2` package.
+
+```{r}
+library(lattice)  # Needed for lattice graphics
+library(ggplot2)  # Needed for ggplot2 graphics
+```
+
+##### (a) Base R graphics
+
+Use the `hist` function to create a histogram of `carat` with bars colored `steelblue`.  
+```{r}
+hist(diamonds$carat, col = "steelblue")
+```
+
+##### (b) qplot histogram
+
+Use the `qplot` function from the `ggplot2` package to create a histogram of `depth`.  Note that `geom = "histogram"` is a valid geometry in `qplot`.  
+
+```{r}
+qplot(x=diamonds$depth, 
+      geom = "histogram",
+      ylab= "Frequency",
+      xlab = "Depth",
+      main = "Histogram of Depth of Diamonds"
+        )
+```
+
+##### (c) qplot boxplot
+
+Use the `qplot` function from the `ggplot2` library to create boxplots showing how `price` varies across diamond `cut`.  Specify `fill = cut` to get all the boxplots to be coloured differently.
+
+```{r}
+qplot(diamonds$cut, diamonds$price,  
+      fill = diamonds$cut, 
+      geom = "boxplot",
+      ylab = "Price of Diamond",
+      xlab = "Cut of Diamond",
+      main = "Box-Plot of Price of Diamonds"
+      )
+```
+
+**Hint**: For this exercise, it will be useful to know that `boxplot` is a geometry (`geom`) built into `ggplot2`, and that `qplot` can be called with the arguments:
+```{r, eval = FALSE}
+qplot(x, y, data, geom, fill)
+```
+
+### Problem 4: ggplot practice 
+
+For this exercise we'll go back to the Cars93 data set in the MASS library
+
+##### (a) size mapping, geom_point()
+
+Define a `ggplot` object using the Cars93 data set that you can use to view `Price` on the y-axis, `EngineSize` on the x-axis, and set the `size` mapping to be based on `Horsepower`.  
+
+Use `geom_point()` to create a scatterplot from your `ggplot` object.
+
+```{r}
+plot.horsepower <- ggplot(data = Cars93, aes(y = Price, x = EngineSize, size = Horsepower))  + geom_point()
+plot.horsepower
+```
+
+##### (b) colour mapping
+
+Repeat part (a), this time also setting the `colour` mapping to be based on `Origin`.
+
+```{r}
+plot.horsepower <- ggplot(data = Cars93, aes(y = Price, x = EngineSize))
+plot.horsepower + geom_point(aes(size = Horsepower, color = Origin))
+```
+
+##### (c) changing color palette
+
+Repeat part (b), this time using the `scale_colour_manual()` layer to specify that you want to use `cbPalette` as your color palette.
+
+```{r}
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+plot.horsepower <- ggplot(data = Cars93, aes(y = Price, x = EngineSize))
+plot.horsepower + geom_point(aes(size = Horsepower, color = Origin)) + scale_colour_manual(values=cbPalette)
+```
+
+
+### Problem 5: More ggplot2 practice
+
+#####(a) stat_smooth()
+
+Repeat part 4(b), this time using `stat_smooth()` to add a layer showing the smoothed curve representing how `Price` varies with `EngineSize`.  
+
+```{r}
+plot.horsepower <- ggplot(data = Cars93, aes(y = Price, x = EngineSize))
+plot.horsepower + geom_point(aes(size = Horsepower, color = Origin)) + stat_smooth(method = "loess")
+```
+
+#####(b) facet_wrap() 
+
+Use your ggplot object from 4(b) along with the `geom_point()` and `facet_wrap()` layers to create scatterplots of `Price` against `EngineSize`, broken down by (conditioned on) `Origin`.  
+
+
+```{r}
+plot.horsepower <- ggplot(data = Cars93, aes(y = Price, x = EngineSize))
+plot.horsepower + geom_point(aes(size = Horsepower, color = Origin)) +facet_wrap(~Origin)
+```
+
+(Your code should produce a figure with two scatterplots, analogous to the `facet_wrap` example from class.  Note that the example from class had a factor with 7 levels, so 7 scatterplots were produced.  `Origin` has two levels.)
+
+#####(c) Overlaying regression lines.
+
+Modify your solution to part (b) to also display regression lines for each scatterplot.
+
+```{r}
+plot.horsepower <- ggplot(data = Cars93, aes(y = Price, x = EngineSize))
+plot.horsepower + geom_point(aes(size = Horsepower, color = Origin)) +facet_wrap(~Origin) + geom_smooth(method = "lm")
+```
+
